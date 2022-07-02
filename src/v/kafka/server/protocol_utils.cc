@@ -26,6 +26,10 @@ parse_header(ss::input_stream<char>& src) {
 
     auto buf = co_await src.read_exactly(request_header_size);
 
+    // balus(Q): 为啥不检查 buf 而要检查 src 呢？
+    // 应该是因为 read_exactly 如果没有读到指定大小的数据那么会返回 exceptional
+    // future，会被 co_await 以异常抛出，所以走到这里肯定是读取到了想要的数据，
+    // 但是由于只有 header 还不行，所以得保证还有 body 可读
     if (src.eof()) {
         co_return std::nullopt;
     }

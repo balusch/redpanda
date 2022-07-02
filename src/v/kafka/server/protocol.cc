@@ -244,6 +244,9 @@ ss::future<> protocol::apply(net::server::resources rs) {
           return ss::make_exception_future(eptr);
       })
       .finally([ctx] {});
+    // balus(N): 常用的维持变量生命周期 > 异步操作的手段：
+    // 在异步操作之后的 finally block 中捕获该变量
+    // https://github.com/redpanda-data/redpanda/commit/aa12d610e8ac19ae5bcd5ef01872a1c9d1069a07
 }
 
 } // namespace kafka

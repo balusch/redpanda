@@ -115,6 +115,8 @@ ss::future<> connection_context::handle_auth_v0(const size_t size) {
     const api_version version(0);
     iobuf request_buf;
     {
+        // balus(T): 我记得 seastar 是有提供一个读取然后 consume
+        // 的方法，并可以指定一个 decoder，应该是流式处理？
         auto data = co_await read_iobuf_exactly(_rs.conn->input(), size);
         sasl_authenticate_request request;
         request.data.auth_bytes = iobuf_to_bytes(data);
@@ -136,6 +138,8 @@ ss::future<> connection_context::handle_auth_v0(const size_t size) {
         auto resp = co_await kafka::process_request(
                       std::move(ctx), _proto.smp_group(), sres)
                       .response;
+        // balus(Q): 这种 relase() 方法带有 &&
+        // 这个修饰符，是指只有右值才可以调用么？
         auto data = std::move(*resp).release();
         response.decode(std::move(data), version);
     }
