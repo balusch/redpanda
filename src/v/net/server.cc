@@ -162,6 +162,7 @@ ss::future<> server::accept(listener& s) {
                   co_return ss::stop_iteration::yes;
               }
               auto ar = f_cs_sa.get();
+              // balus(T): 这俩等确定有 quota 之后再设置？
               ar.connection.set_nodelay(true);
               ar.connection.set_keepalive(true);
 
@@ -200,6 +201,7 @@ ss::future<> server::accept(listener& s) {
                     SOL_SOCKET, SO_SNDBUF, &send_buf, sizeof(send_buf));
               }
 
+              // balus(Q): conn quota 和 conn rate 的区别？
               if (_connection_rates) {
                   try {
                       co_await _connection_rates->maybe_wait(
@@ -228,6 +230,7 @@ ss::future<> server::accept(listener& s) {
                 _proto->name(),
                 ar.remote_address,
                 name);
+              // balus(Q): 为啥不提前检查 conn gate 呢？
               if (_conn_gate.is_closed()) {
                   co_await conn->shutdown();
                   throw ss::gate_closed_exception();
@@ -235,6 +238,7 @@ ss::future<> server::accept(listener& s) {
               ssx::spawn_with_gate(
                 _conn_gate,
                 [this, conn, cq_units = std::move(cq_units)]() mutable {
+                    // balus(N): 根据协议处理数据的收发
                     return apply_proto(
                       _proto.get(), resources(this, conn), std::move(cq_units));
                 });
@@ -276,6 +280,7 @@ ss::future<> server::wait_for_shutdown() {
     }
 
     return _conn_gate.close().then([this] {
+        // balus(T): 这个是不是可以 parallel_for_each，因为没有必要顺序关闭？
         return seastar::do_for_each(
           _connections, [](net::connection& c) { return c.shutdown(); });
     });
