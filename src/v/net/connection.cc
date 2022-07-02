@@ -62,8 +62,24 @@ connection::connection(
   , _name(std::move(name))
   , _fd(std::move(f))
   , _in(_fd.input())
+  // balus(N): net::batched_output_stream 接受一个 ss::output_stream +
+  // 一个默认参数， 所以这里才可以直接赋值
   , _out(_fd.output())
+  // balus(N):
+  // 类里面的引用类型成员，需要保证其引用的对象在该类之后才被释放，对于
+  // connection，其引用的 _hook/_probe 都是其所属 server 中的成员，而 server
+  // 一定会确保在所有 connection 都被清理之后才释放
+  // balus(T): 不过 server 仅仅是用 boost::intrusive_list 保存所有的
+  // connection，它并不管理 connection 的生命周期(不像
+  // std::list)，那么它是怎么来确保上面提到的这点呢？其实不是通过
+  // _hook，而是通过 server 中的 _gate，每个创建出来的 connection 必定属于某个
+  // accept 异步操作(server::accept() 函数，lambda
+  // 捕获)，只不过为了便于管理才加入到 _hook 链表中去的，异步操作结束这个
+  // connection 就自动释放并从链表中脱离了(其析构函数的行为)，当关闭 server
+  // 时，server 通过 _gate 确保在所有它发起的后台 accept 操作都结束之后才清理
+  // server，这样就确保了上一点
   , _probe(p) {
+>>>>>>> 3f2e07f39 (Study net/connection.)
     if (in_max_buffer_size.has_value()) {
         auto in_config = ss::connected_socket_input_stream_config{};
         in_config.max_buffer_size = in_max_buffer_size.value();
