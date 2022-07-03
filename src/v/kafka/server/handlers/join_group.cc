@@ -35,6 +35,8 @@ static void decode_request(request_context& ctx, join_group_request& req) {
       fmt::format("{}", ctx.connection()->client_host()));
 }
 
+// balus(N): 这里 request_context pass-by-value 是有原因的
+// https://github.com/redpanda-data/redpanda/commit/09eecbba2a6ccdf96f03a9f06901ed678cee1e80
 template<>
 process_result_stages join_group_handler::handle(
   request_context ctx, [[maybe_unused]] ss::smp_service_group g) {

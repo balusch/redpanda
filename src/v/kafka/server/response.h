@@ -64,6 +64,7 @@ private:
     response_writer _writer;
 };
 
+// balus(Q): 为啥 response_ptr 需要是一个 ss::foreign_ptr?
 using response_ptr = ss::foreign_ptr<std::unique_ptr<response>>;
 
 struct process_result_stages {
@@ -84,6 +85,7 @@ struct process_result_stages {
     static process_result_stages single_stage(ss::future<response_ptr> f) {
         ss::promise<response_ptr> response;
         auto response_f = response.get_future();
+        // balus(N): 当 dispatch resolve 之后，response 也就 ready 了
         auto dispatch = f.then_wrapped(
           [response = std::move(response)](ss::future<response_ptr> f) mutable {
               try {
@@ -97,6 +99,10 @@ struct process_result_stages {
         return process_result_stages(
           std::move(dispatch), std::move(response_f));
     }
+
+    // balus(Q): dispatched 和 response 这俩 future 的关系和用途？
+    // dispatched 是说
+    // response 则是说
 
     // after this future resolved request is dispatched for processing and
     // processing order is set
