@@ -417,6 +417,12 @@ ss::future<> connection_context::maybe_process_responses() {
 
         auto msg = response_as_scattered(std::move(resp_and_res.response));
         try {
+            // balus(N): net::connection 底层用的是 batched_output_stream
+            // 它里面会用 semaphore 控制每次只有一个 user 能往里面写入数据
+            // 所以这里也不用担心多个 response loop 无序写数据导致数据串了
+            // balus(Q): 如果 write() 返回一个 exceptional future 怎么办？
+            // try-catch 捕获不了，repeat 会停止循环，其他 response 会继续
+            // 进入这个 loop，然后也返回一个 exceptional future
             return _rs.conn->write(std::move(msg))
               .then([] {
                   return ss::make_ready_future<ss::stop_iteration>(

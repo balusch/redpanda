@@ -159,8 +159,12 @@ ss::future<> server::accept(listener& s) {
           -> ss::future<ss::stop_iteration> {
               if (_as.abort_requested()) {
                   f_cs_sa.ignore_ready_future();
+                  // balus(Q): 直接用 return make_ready_future 不行么？
                   co_return ss::stop_iteration::yes;
               }
+              // balus(N): 如果 f_cs_sa 是一个 exceptional future，那么 get
+              // 会抛出异常，并由 then_wrapped 捕获并转换为一个 exceptional
+              // future 返回给调用方，所以这里也不用检查 failed()
               auto ar = f_cs_sa.get();
               // balus(T): 这俩等确定有 quota 之后再设置？
               ar.connection.set_nodelay(true);
