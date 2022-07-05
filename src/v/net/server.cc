@@ -154,9 +154,8 @@ ss::future<> server::accept(listener& s) {
                   f_cs_sa.ignore_ready_future();
                   co_return ss::stop_iteration::yes;
               }
+
               auto ar = f_cs_sa.get();
-              ar.connection.set_nodelay(true);
-              ar.connection.set_keepalive(true);
 
               // `s` is a lambda reference argument to a coroutine:
               // this is the last place we may refer to it before
@@ -178,21 +177,6 @@ ss::future<> server::accept(listener& s) {
                   }
               }
 
-              // Apply socket buffer size settings
-              if (cfg.tcp_recv_buf.has_value()) {
-                  // Explicitly store in an int to decouple the
-                  // config type from the set_sockopt type.
-                  int recv_buf = cfg.tcp_recv_buf.value();
-                  ar.connection.set_sockopt(
-                    SOL_SOCKET, SO_RCVBUF, &recv_buf, sizeof(recv_buf));
-              }
-
-              if (cfg.tcp_send_buf.has_value()) {
-                  int send_buf = cfg.tcp_send_buf.value();
-                  ar.connection.set_sockopt(
-                    SOL_SOCKET, SO_SNDBUF, &send_buf, sizeof(send_buf));
-              }
-
               if (_connection_rates) {
                   try {
                       co_await _connection_rates->maybe_wait(
@@ -206,6 +190,24 @@ ss::future<> server::accept(listener& s) {
                       _probe.timeout_waiting_rate_limit();
                       co_return ss::stop_iteration::no;
                   }
+              }
+
+              ar.connection.set_nodelay(true);
+              ar.connection.set_keepalive(true);
+
+              // Apply socket buffer size settings
+              if (cfg.tcp_recv_buf.has_value()) {
+                  // Explicitly store in an int to decouple the
+                  // config type from the set_sockopt type.
+                  int recv_buf = cfg.tcp_recv_buf.value();
+                  ar.connection.set_sockopt(
+                    SOL_SOCKET, SO_RCVBUF, &recv_buf, sizeof(recv_buf));
+              }
+
+              if (cfg.tcp_send_buf.has_value()) {
+                  int send_buf = cfg.tcp_send_buf.value();
+                  ar.connection.set_sockopt(
+                    SOL_SOCKET, SO_SNDBUF, &send_buf, sizeof(send_buf));
               }
 
               std::optional<security::tls::principal_mapper> tls_pm;
